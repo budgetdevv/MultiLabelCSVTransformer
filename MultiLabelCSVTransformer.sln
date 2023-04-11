@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiLabelCSVTransformer", "MultiLabelCSVTransformer\MultiLabelCSVTransformer.csproj", "{2E0D8C57-F7D0-48EE-957A-FB7EF79CA50B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2E0D8C57-F7D0-48EE-957A-FB7EF79CA50B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E0D8C57-F7D0-48EE-957A-FB7EF79CA50B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E0D8C57-F7D0-48EE-957A-FB7EF79CA50B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E0D8C57-F7D0-48EE-957A-FB7EF79CA50B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
