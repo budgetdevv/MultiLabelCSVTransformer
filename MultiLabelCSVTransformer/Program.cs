@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
+using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Xml.Schema;
-using Sylvan.Data.Csv;
-
-// using CsvHelper;
-// using CsvHelper.Configuration;
+using CsvHelper;
+using Dynamitey;
+using CsvDataReader = Sylvan.Data.Csv.CsvDataReader;
 
 namespace MultiLabelCSVTransformer
 {
@@ -47,28 +47,9 @@ namespace MultiLabelCSVTransformer
 
                 using var Reader = CsvDataReader.Create(RStream);
 
-                // var Configuration = new CsvConfiguration(CultureInfo.InvariantCulture)
-                // {
-                //     DetectDelimiter = true
-                // };
-                //
-                // using var Reader = new CsvReader(RStream, Configuration);
-                
-                // using var WStream = new StreamWriter($"Output{Ext}");
-                //
-                // using var Writer = new CsvWriter(WStream, CultureInfo.InvariantCulture);
+                using var WStream = new StreamWriter($"Output{Ext}", append: false);
 
-                //Read Header
-                
-                // if (!Reader.Read())
-                // {
-                //     goto Empty;
-                // }
-                
-                // if (!Reader.ReadHeader())
-                // {
-                //     goto NoHeader;
-                // }
+                using var Writer = new CsvWriter(WStream, CultureInfo.InvariantCulture);
 
                 //var Header = Reader.HeaderRecord;
 
@@ -78,7 +59,7 @@ namespace MultiLabelCSVTransformer
 
                 var SelectedColumnsList = Header.ToList();
                 
-                var ExcludedColumnsOrdinal = new List<int>();
+                var ExcludedColumns = new List<DbColumn>();
                 
                 //We pre-allocate like half the memory ( sizeof(char) is 2 bytes )
                 var SB = new StringBuilder((int) new FileInfo(Path).Length);
@@ -124,7 +105,7 @@ namespace MultiLabelCSVTransformer
                 
                     var Excluded = Header[ExcludedRowIndex];
                 
-                    ExcludedColumnsOrdinal.Add(Excluded.ColumnOrdinal.Value);
+                    ExcludedColumns.Add(Excluded);
                     
                     SelectedColumnsList.Remove(Excluded);
                 
@@ -174,16 +155,32 @@ namespace MultiLabelCSVTransformer
                 
                 SB.Clear();
                 
-                foreach (var Column in ExcludedColumnsOrdinal)
+                // foreach (var Column in ExcludedColumnsOrdinal)
+                // {
+                //     SB.Append(Column);
+                //     
+                //     SB.Append(Separator);
+                // }
+                //
+                // //Separator already inserted for us
+                // SB.Append("Label");
+                
+                dynamic Record = new ExpandoObject();
+                
+                foreach (var Column in ExcludedColumns)
                 {
-                    SB.Append(Column);
-                    
-                    SB.Append(Separator);
+                    Dynamic.InvokeSet(Record, Column.ColumnName, string.Empty);
                 }
+
+                var LabelBox = (object) 0;
+
+                ref var Label = ref Unsafe.Unbox<int>(LabelBox);
                 
-                //Separator already inserted for us
-                SB.Append("Label");
+                Dynamic.InvokeSet(Record, "Label", LabelBox);
                 
+                // //Separator already inserted for us
+                // SB.Append("Label");
+
                 var IndexOfColumnsWithOne = new List<int>(SelectedColumns.Length);
                 
                 ref var FirstColumn = ref MemoryMarshal.GetArrayDataReference(SelectedColumns);
@@ -210,34 +207,32 @@ namespace MultiLabelCSVTransformer
                             IndexOfColumnsWithOne.Add(IndexOfCurrent);
                         }
                     }
-                
+
                     using var IndexOfColumnsWithOneEnumerator = IndexOfColumnsWithOne.GetEnumerator();
                 
-                    var NoSetColumn = !IndexOfColumnsWithOneEnumerator.MoveNext();
+                    var SetColumnsPresent = IndexOfColumnsWithOneEnumerator.MoveNext();
                 
-                    //Remember to append a new line every iteration
-                    SB.Append('\n');
+                    // //Remember to append a new line every iteration
+                    // SB.Append('\n');
                     
-                    var CurrentStart = SB.Length;
+                    //var CurrentStart = SB.Length;
                 
-                    foreach (var ExcludedColumnOrdinal in ExcludedColumnsOrdinal)
+                    foreach (var Column in ExcludedColumns)
                     {
-                        var Data = Reader.GetFieldSpan(ExcludedColumnOrdinal);
-                
+                        var Data = Reader.GetFieldSpan(Column.ColumnOrdinal.Value);
+
+                        var ColName = Column.ColumnName;
+                        
                         if (!int.TryParse(Data, out var DataAsNum))
                         {
-                            SB.Append('"');
-                            SB.Append(Data);
-                            SB.Append('"');
+                            Dynamic.InvokeSet(Record, ColName, Data.ToString());
                         }
                 
                         else
                         {
-                            SB.Append(DataAsNum);
+                            Dynamic.InvokeSet(Record, ColName, DataAsNum);
                         }
-                
-                        SB.Append(Separator);
-                        
+
                         // var Data = Reader.GetField<string>(ExcludedColumn);
                         //
                         // if (!int.TryParse(Data, out var DataAsNum))
@@ -255,39 +250,46 @@ namespace MultiLabelCSVTransformer
                         // SB.Append(Separator);
                     }
                 
-                    //0, 1, 2 ( Size: 3 ) -> 3 - 0 -> 3
-                    var ExcludedData = SB.ToString(CurrentStart, SB.Length - CurrentStart);
+                    // //0, 1, 2 ( Size: 3 ) -> 3 - 0 -> 3
+                    // var ExcludedData = SB.ToString(CurrentStart, SB.Length - CurrentStart);
                 
-                    if (NoSetColumn)
+                    if (SetColumnsPresent)
                     {
-                        goto NoSetColumn;
-                    }
-                    
-                    //Separator already inserted for us, so just insert index of column with set ( 1 ) data
-                    SB.Append(IndexOfColumnsWithOneEnumerator.Current);
-                    
-                    while (IndexOfColumnsWithOneEnumerator.MoveNext())
-                    {
-                        SB.Append('\n');
+                        do
+                        {
+                            Label = IndexOfColumnsWithOneEnumerator.Current;
+                            Writer.WriteRecord(Record);
+                        } while (IndexOfColumnsWithOneEnumerator.MoveNext());
                         
-                        SB.Append(ExcludedData);
-                
-                        SB.Append(IndexOfColumnsWithOneEnumerator.Current);
+                        //Remember to clear data, as list is reused next iteration
+                        IndexOfColumnsWithOne.Clear();
                     }
-                    
-                    //Remember to clear data, as list is reused next iteration
-                    IndexOfColumnsWithOne.Clear();
-                    
-                    continue;
-                
-                    NoSetColumn:
-                    SB.Append(0);
-                    
-                    RowWithNoSetColumnCount++;
+
+                    else
+                    {
+                        Label = 0;
+                        RowWithNoSetColumnCount++;
+                        Writer.WriteRecord(Record);
+                    }
+
+                    // //Separator already inserted for us, so just insert index of column with set ( 1 ) data
+                    // SB.Append(IndexOfColumnsWithOneEnumerator.Current);
+                    //
+                    // while (IndexOfColumnsWithOneEnumerator.MoveNext())
+                    // {
+                    //     SB.Append('\n');
+                    //     
+                    //     SB.Append(ExcludedData);
+                    //
+                    //     SB.Append(IndexOfColumnsWithOneEnumerator.Current);
+                    // }
+
+                    //NoSetColumn:
+                    //SB.Append(0);
                 }
                 
-                File.WriteAllText($"Output{Ext}", SB.ToString());
-                
+                //File.WriteAllText($"Output{Ext}", SB.ToString());
+
                 Console.WriteLine($"Complete! With {RowWithNoSetColumnCount} row(s) with no set labels!");
                 
                 return;
