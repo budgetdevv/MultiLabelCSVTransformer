@@ -16,28 +16,16 @@ namespace MultiLabelCSVTransformer
 {
     internal class Program
     {
-        static unsafe void Main(string[] args)
+        static void Main(string[] args)
         {
             const string Ext = ".csv";
             
             const char Separator = ',';
             
-            var ExtSpan = Ext.AsSpan();
-            
             GetPath:
             Console.WriteLine("Input path to CSV! ( Or just drag it in ;) )");
 
             var Path = Console.ReadLine();
-            
-            var PathSpan = Path.AsSpan();
-
-            // //0, 1, 2, 3 | Length: 4
-            // if (PathSpan.Length < ExtSpan.Length || !PathSpan.Slice(PathSpan.Length - ExtSpan.Length).SequenceEqual(ExtSpan))
-            // {
-            //     Console.WriteLine($"Invalid {Ext} file!");
-            //     
-            //     goto GetPath;
-            // }
 
             string ErrorMsg;
             
@@ -154,17 +142,7 @@ namespace MultiLabelCSVTransformer
                 }
                 
                 SB.Clear();
-                
-                // foreach (var Column in ExcludedColumnsOrdinal)
-                // {
-                //     SB.Append(Column);
-                //     
-                //     SB.Append(Separator);
-                // }
-                //
-                // //Separator already inserted for us
-                // SB.Append("Label");
-                
+
                 dynamic Record = new ExpandoObject();
                 
                 foreach (var Column in ExcludedColumns)
@@ -178,10 +156,7 @@ namespace MultiLabelCSVTransformer
                 
                 Dynamic.InvokeSet(Record, "Label", LabelBox);
                 
-                // //Separator already inserted for us
-                // SB.Append("Label");
-
-                //Writer.WriteHeader(Record);
+                Writer.WriteHeader(Record);
                 
                 var IndexOfColumnsWithOne = new List<int>(SelectedColumns.Length);
                 
@@ -203,7 +178,6 @@ namespace MultiLabelCSVTransformer
                         
                         if (Int == 1)
                         {
-                            //var IndexOfCurrent = (int) Unsafe.ByteOffset(ref FirstColumn, ref Current) / sizeof(string);
                             var IndexOfCurrent = (int) Unsafe.ByteOffset(ref FirstColumn, ref Current) / sizeof(int);
                             
                             IndexOfColumnsWithOne.Add(IndexOfCurrent);
@@ -213,12 +187,7 @@ namespace MultiLabelCSVTransformer
                     using var IndexOfColumnsWithOneEnumerator = IndexOfColumnsWithOne.GetEnumerator();
                 
                     var SetColumnsPresent = IndexOfColumnsWithOneEnumerator.MoveNext();
-                
-                    // //Remember to append a new line every iteration
-                    // SB.Append('\n');
-                    
-                    //var CurrentStart = SB.Length;
-                
+
                     foreach (var Column in ExcludedColumns)
                     {
                         var Data = Reader.GetFieldSpan(Column.ColumnOrdinal.Value);
@@ -234,27 +203,8 @@ namespace MultiLabelCSVTransformer
                         {
                             Dynamic.InvokeSet(Record, ColName, DataAsNum);
                         }
-
-                        // var Data = Reader.GetField<string>(ExcludedColumn);
-                        //
-                        // if (!int.TryParse(Data, out var DataAsNum))
-                        // {
-                        //     SB.Append('"');
-                        //     SB.Append(Data);
-                        //     SB.Append('"');
-                        // }
-                        //
-                        // else
-                        // {
-                        //     SB.Append(DataAsNum);
-                        // }
-                        //
-                        // SB.Append(Separator);
                     }
-                
-                    // //0, 1, 2 ( Size: 3 ) -> 3 - 0 -> 3
-                    // var ExcludedData = SB.ToString(CurrentStart, SB.Length - CurrentStart);
-                
+
                     if (SetColumnsPresent)
                     {
                         do
