@@ -145,17 +145,23 @@ namespace MultiLabelCSVTransformer
                 
                 foreach (var Column in ExcludedColumns)
                 {
-                    Dynamic.InvokeSet(Record, Column.ColumnName, string.Empty);
+                    var ColumnName = Column.ColumnName;
+                    Writer.WriteField(ColumnName);
+                    Dynamic.InvokeSet(Record, ColumnName, string.Empty);
                 }
 
                 var LabelBox = (object) 0;
 
                 ref var Label = ref Unsafe.Unbox<int>(LabelBox);
+
+                const string LabelName = "Label";
                 
-                Dynamic.InvokeSet(Record, "Label", LabelBox);
+                Writer.WriteField(LabelName);
                 
-                Writer.WriteHeader(Record);
+                Dynamic.InvokeSet(Record, LabelName, LabelBox);
                 
+                Writer.NextRecord();
+
                 var IndexOfColumnsWithOne = new List<int>(SelectedColumns.Length);
                 
                 ref var FirstColumn = ref MemoryMarshal.GetArrayDataReference(SelectedColumns);
