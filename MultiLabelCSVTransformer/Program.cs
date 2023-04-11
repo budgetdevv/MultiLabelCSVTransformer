@@ -181,6 +181,8 @@ namespace MultiLabelCSVTransformer
                 // //Separator already inserted for us
                 // SB.Append("Label");
 
+                //Writer.WriteHeader(Record);
+                
                 var IndexOfColumnsWithOne = new List<int>(SelectedColumns.Length);
                 
                 ref var FirstColumn = ref MemoryMarshal.GetArrayDataReference(SelectedColumns);
@@ -257,8 +259,10 @@ namespace MultiLabelCSVTransformer
                     {
                         do
                         {
-                            Label = IndexOfColumnsWithOneEnumerator.Current;
+                            //Zero represents neutral or no data
+                            Label = IndexOfColumnsWithOneEnumerator.Current + 1;
                             Writer.WriteRecord(Record);
+                            Writer.NextRecord();
                         } while (IndexOfColumnsWithOneEnumerator.MoveNext());
                         
                         //Remember to clear data, as list is reused next iteration
@@ -270,6 +274,7 @@ namespace MultiLabelCSVTransformer
                         Label = 0;
                         RowWithNoSetColumnCount++;
                         Writer.WriteRecord(Record);
+                        Writer.NextRecord();
                     }
 
                     // //Separator already inserted for us, so just insert index of column with set ( 1 ) data
