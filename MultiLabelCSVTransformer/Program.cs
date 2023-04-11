@@ -192,17 +192,7 @@ namespace MultiLabelCSVTransformer
                     {
                         var Data = Reader.GetFieldSpan(Column.ColumnOrdinal.Value);
 
-                        var ColName = Column.ColumnName;
-                        
-                        if (!int.TryParse(Data, out var DataAsNum))
-                        {
-                            Dynamic.InvokeSet(Record, ColName, Data.ToString());
-                        }
-                
-                        else
-                        {
-                            Dynamic.InvokeSet(Record, ColName, DataAsNum);
-                        }
+                        Dynamic.InvokeSet(Record, Column.ColumnName, Data.ToString());
                     }
 
                     if (SetColumnsPresent)
