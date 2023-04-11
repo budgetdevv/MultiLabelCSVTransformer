@@ -14,9 +14,9 @@ using CsvDataReader = Sylvan.Data.Csv.CsvDataReader;
 
 namespace MultiLabelCSVTransformer
 {
-    internal class Program
+    internal static class Program
     {
-        static void Main(string[] args)
+        private static void Main()
         {
             const string Ext = ".csv";
             
@@ -39,20 +39,17 @@ namespace MultiLabelCSVTransformer
 
                 using var Writer = new CsvWriter(WStream, CultureInfo.InvariantCulture);
 
-                //var Header = Reader.HeaderRecord;
-
                 var Header = Reader.GetColumnSchema();
-
-                //var SelectedColumnsHS = Header!.ToDictionary(x => x.ColumnName);
 
                 var SelectedColumnsList = Header.ToList();
                 
                 var ExcludedColumns = new List<DbColumn>();
+
+                var SelectPrompt = $"Select columns to exclude via 0-based indexes, separated with ({Separator})";
                 
-                //We pre-allocate like half the memory ( sizeof(char) is 2 bytes )
-                var SB = new StringBuilder((int) new FileInfo(Path).Length);
+                var SB = new StringBuilder(1024);
                 
-                SB.Append($"Select columns to exclude via 0-based indexes, separated with ({Separator})");
+                SB.Append(SelectPrompt);
                 
                 var ColumnIndex = 0;
                 
@@ -124,7 +121,7 @@ namespace MultiLabelCSVTransformer
                     SB.Append($"\n{ColumnIndex++} | {Column}");
                 }
                 
-                SB.Append($"\nProceed? ( Y / N )");
+                SB.Append("\nProceed? ( Y / N )");
                 
                 ProceedPrompt:
                 var ProceedPrompt = SB.ToString();
@@ -140,8 +137,9 @@ namespace MultiLabelCSVTransformer
                     case "N":
                         goto ColumnSelectPrompt;
                 }
-                
-                SB.Clear();
+
+                //Mainly to ensure that it is not used after ( IDE would warn )
+                SB = null;
 
                 dynamic Record = new ExpandoObject();
                 
@@ -172,8 +170,6 @@ namespace MultiLabelCSVTransformer
                          ; !Unsafe.AreSame(ref Current, ref LastColumnOffsetByOne)
                          ; Current = ref Unsafe.Add(ref Current, 1))
                     {
-                        //var Int = Reader.GetField<int>(Current);
-
                         var Int = Reader.GetInt16(Current);
                         
                         if (Int == 1)
@@ -216,24 +212,7 @@ namespace MultiLabelCSVTransformer
                         Writer.WriteRecord(Record);
                         Writer.NextRecord();
                     }
-
-                    // //Separator already inserted for us, so just insert index of column with set ( 1 ) data
-                    // SB.Append(IndexOfColumnsWithOneEnumerator.Current);
-                    //
-                    // while (IndexOfColumnsWithOneEnumerator.MoveNext())
-                    // {
-                    //     SB.Append('\n');
-                    //     
-                    //     SB.Append(ExcludedData);
-                    //
-                    //     SB.Append(IndexOfColumnsWithOneEnumerator.Current);
-                    // }
-
-                    //NoSetColumn:
-                    //SB.Append(0);
                 }
-                
-                //File.WriteAllText($"Output{Ext}", SB.ToString());
 
                 Console.WriteLine($"Complete! With {RowWithNoSetColumnCount} row(s) with no set labels!");
                 
@@ -246,15 +225,7 @@ namespace MultiLabelCSVTransformer
                 
                 goto PrintError;
             }
-
-            Empty:
-            ErrorMsg = "File is empty!";
-            goto PrintError;
             
-            NoHeader:
-            ErrorMsg = "No Header!";
-            goto PrintError;
-
             PrintError:
             Console.WriteLine(ErrorMsg);
             goto GetPath;
